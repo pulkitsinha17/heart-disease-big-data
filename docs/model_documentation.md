@@ -192,7 +192,61 @@ While achieving $\text{ROC-AUC} > 0.94$ demonstrates technical pipeline soundnes
 
 ---
 
-## 10. Reproduction Instructions
+## 10. Dashboard Readiness & Inference Specification (Phase 6 Preparation)
+
+The serialized joblib pipelines (`models/logistic_regression.joblib` and `models/random_forest.joblib`) encapsulate both the `ColumnTransformer` preprocessing and the trained classifier. A downstream Streamlit application can perform zero-overhead inference directly from raw clinical inputs without external feature scaling or manual one-hot encoding code.
+
+### 10.1 Expected Input Schema (13 Clinical Features)
+
+| Feature | Input Type | Permitted / Observed Range | Clinical Meaning & Options |
+| :--- | :--- | :--- | :--- |
+| `age` | Float / Int | `29.0` – `77.0` years | Patient age in years |
+| `sex` | Float / Int | `1.0` (Male), `0.0` (Female) | Biological sex |
+| `cp` | Float / Int | `1.0`, `2.0`, `3.0`, `4.0` | Chest pain type:<br>• `1.0`: Typical angina<br>• `2.0`: Atypical angina<br>• `3.0`: Non-anginal pain<br>• `4.0`: Asymptomatic |
+| `trestbps` | Float | `94.0` – `200.0` mm Hg | Resting systolic blood pressure upon admission |
+| `chol` | Float | `126.0` – `564.0` mg/dl | Serum cholesterol |
+| `fbs` | Float / Int | `1.0` (True), `0.0` (False) | Fasting blood sugar > 120 mg/dl indicator |
+| `restecg` | Float / Int | `0.0`, `1.0`, `2.0` | Resting ECG:<br>• `0.0`: Normal<br>• `1.0`: ST-T wave abnormality<br>• `2.0`: Left ventricular hypertrophy |
+| `thalach` | Float | `71.0` – `202.0` bpm | Maximum heart rate achieved during exercise |
+| `exang` | Float / Int | `1.0` (Yes), `0.0` (No) | Exercise-induced angina |
+| `oldpeak` | Float | `0.0` – `6.2` mm | ST depression induced by exercise relative to rest |
+| `slope` | Float / Int | `1.0`, `2.0`, `3.0` | Slope of peak exercise ST segment:<br>• `1.0`: Upsloping<br>• `2.0`: Flat<br>• `3.0`: Downsloping |
+| `ca` | Float / Int | `0.0`, `1.0`, `2.0`, `3.0` | Number of major vessels (0–3) colored by fluoroscopy |
+| `thal` | Float / Int | `3.0`, `6.0`, `7.0` | Thallium scintigraphy:<br>• `3.0`: Normal<br>• `6.0`: Fixed defect<br>• `7.0`: Reversible defect |
+
+### 10.2 Inference Code Snippet for Streamlit
+
+```python
+import joblib
+import pandas as pd
+
+# 1. Load pipeline (contains preprocessing + classifier)
+pipeline = joblib.load("models/logistic_regression.joblib")
+
+# 2. Construct patient DataFrame from UI widgets
+patient_df = pd.DataFrame([{
+    "age": 55.0, "sex": 1.0, "cp": 4.0, "trestbps": 140.0, "chol": 240.0,
+    "fbs": 0.0, "restecg": 0.0, "thalach": 145.0, "exang": 1.0,
+    "oldpeak": 1.8, "slope": 2.0, "ca": 1.0, "thal": 7.0
+}])
+
+# 3. Predict probability and binary classification
+pred_class = int(pipeline.predict(patient_df)[0])           # 0 (Low Risk) or 1 (High Risk)
+risk_proba = float(pipeline.predict_proba(patient_df)[0, 1]) # Continuous score in [0.0, 1.0]
+```
+
+### 10.3 Expected Prediction Output Fields
+
+- `predicted_class`: Integer (`0` = Absence of heart disease risk, `1` = Presence of heart disease risk).
+- `risk_probability`: Float between `0.0` and `1.0` representing continuous risk score.
+- `risk_tier`: Categorical mapping for clinicians:
+  - `Low Risk`: probability $< 0.30$
+  - `Moderate Risk`: $0.30 \le$ probability $< 0.60$
+  - `High Risk`: probability $\ge 0.60$
+
+---
+
+## 11. Reproduction Instructions
 
 To reproduce the complete Phase 5 workflow from the project root:
 
