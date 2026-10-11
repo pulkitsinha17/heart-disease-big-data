@@ -226,7 +226,51 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/01_data_exploratio
 
 ---
 
-## 9. Planned Project Phases
+## 9. Phase 3: Streaming Ingestion Pipeline with Apache Kafka
+
+### Architecture & Topic Configuration
+- **Topic Name**: `heart-disease-records` (1 partition, replication factor 1)
+- **Bootstrap Server (Host)**: `localhost:9092`
+- **Serialization Format**: Valid JSON with strictly mapped Python `None` to JSON `null` for missing clinical values (`ca`, `thal`).
+- **Identifier**: `record_id` (1-indexed, `1` to `303`).
+- **Features Preserved**: All 13 input clinical attributes + binary `target` (`0` or `1`).
+
+### How to Run Kafka Producer and Consumer
+
+#### Step 1: Ensure Topic Exists (or Reset Topic)
+```bash
+docker exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --if-not-exists --topic heart-disease-records --partitions 1 --replication-factor 1
+```
+
+To reset the topic to offset 0 for a clean repeat test run without touching Docker volumes:
+```bash
+docker exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic heart-disease-records
+docker exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic heart-disease-records --partitions 1 --replication-factor 1
+```
+
+#### Step 2: Run in Separate PowerShell Terminals
+
+**Terminal 1 (Start Consumer First):**
+```powershell
+python kafka/consumer.py --max-messages 303
+```
+*(The consumer will connect, join a unique group, and await incoming records).*
+
+**Terminal 2 (Start Producer):**
+```powershell
+python kafka/producer.py
+```
+*(The producer will read `data/processed/heart_disease.csv`, publish all 303 records with delivery callbacks, and flush).*
+
+#### Step 3: Run Automated End-to-End Verification
+To execute both the consumer and producer in a single coordinated automated test run:
+```powershell
+python kafka/test_streaming.py
+```
+
+---
+
+## 10. Planned Project Phases
 
 - **Phase 1: Project Structuring & Environment Setup** *(Completed)*
   - Establish directory structure, dependencies (`requirements.txt`), Docker Compose (`docker-compose.yml`), and documentation.
@@ -235,9 +279,11 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/01_data_exploratio
   - Implement automated preparation script (`preprocessing/prepare_dataset.py`).
   - Perform statistical analysis and visualizations in `notebooks/01_data_exploration.ipynb`.
   - Comprehensive clinical and schema documentation in `docs/dataset_documentation.md`.
-- **Phase 3: Streaming Ingestion Pipeline with Apache Kafka**
-  - Implement Kafka Producer to simulate continuous clinical patient measurements.
-  - Implement Kafka Consumer to read from Kafka topics.
+- **Phase 3: Streaming Ingestion Pipeline with Apache Kafka** *(Completed)*
+  - Implement Kafka Producer (`kafka/producer.py`) with strict JSON serialization.
+  - Implement Kafka Consumer (`kafka/consumer.py`) with schema and uniqueness validation.
+  - Implement shared configuration and validation schema (`kafka/config.py`).
+  - Automated end-to-end streaming test (`kafka/test_streaming.py`).
 - **Phase 4: Distributed Storage on Hadoop HDFS**
   - Configure Hadoop HDFS storage.
   - Ingest raw stream data into HDFS directories.
@@ -255,7 +301,7 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/01_data_exploratio
 
 ---
 
-## 10. Directory Layout
+## 11. Directory Layout
 
 ```
 heart-disease-big-data/
@@ -267,7 +313,11 @@ heart-disease-big-data/
 │   └── processed/
 │       └── heart_disease.csv         # Cleaned, binarized 303x14 dataset
 │
-├── kafka/                            # Kafka producers, consumers, and topic configs
+├── kafka/
+│   ├── config.py                     # Kafka constants and schema validation
+│   ├── producer.py                   # Patient record streaming producer
+│   ├── consumer.py                   # Validating streaming consumer
+│   └── test_streaming.py             # Automated end-to-end test runner
 │
 ├── hdfs/                             # HDFS client utilities and ingestion scripts
 │
@@ -293,4 +343,5 @@ heart-disease-big-data/
 ├── README.md                         # Project overview, guides, and roadmap
 └── .gitignore                        # Version control ignore rules
 ```
+
 
