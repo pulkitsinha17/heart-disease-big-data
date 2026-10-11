@@ -72,6 +72,7 @@ services:
     environment:
       WAITFOR: namenode:9000
       HDFS-SITE.XML_dfs.datanode.data.dir: /data/datanode
+      HDFS-SITE.XML_dfs.datanode.hostname: localhost
     volumes:
       - hadoop_datanode:/data/datanode
     networks:
