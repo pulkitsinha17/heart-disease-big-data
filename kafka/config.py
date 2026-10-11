@@ -7,6 +7,7 @@ from typing import Dict, Any, Tuple, List
 
 DEFAULT_BOOTSTRAP_SERVERS: str = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 DEFAULT_TOPIC: str = os.getenv("KAFKA_TOPIC", "heart-disease-records")
+DEFAULT_DEMO_TOPIC: str = os.getenv("KAFKA_DEMO_TOPIC", "heart-disease-records")
 DEFAULT_GROUP_ID: str = os.getenv("KAFKA_GROUP_ID", "heart-disease-consumer-group")
 EXPECTED_RECORD_COUNT: int = 303
 

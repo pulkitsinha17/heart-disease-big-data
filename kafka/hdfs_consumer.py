@@ -16,7 +16,7 @@ from typing import Dict, Any, List, Set
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from kafka import KafkaConsumer
+from kafka import KafkaConsumer, TopicPartition
 from kafka.errors import KafkaError, KafkaConnectionError
 
 # Import local modules robustly against site-package namespace collisions
@@ -55,21 +55,30 @@ from hdfs_writer import HDFSWriter, DEFAULT_NAMENODE_URL, DEFAULT_HDFS_FILE
 def run_hdfs_consumer(
     bootstrap_servers: str = DEFAULT_BOOTSTRAP_SERVERS,
     topic: str = DEFAULT_TOPIC,
-    group_id: str = f"heart-disease-hdfs-group-{int(time.time())}",
+    group_id: str = None,
     hdfs_url: str = DEFAULT_NAMENODE_URL,
     hdfs_path: str = DEFAULT_HDFS_FILE,
     max_messages: int = EXPECTED_RECORD_COUNT,
     timeout_ms: int = 15000,
     overwrite: bool = True,
     from_beginning: bool = True,
+    demo_mode: bool = False,
     verbose: bool = False,
 ) -> int:
     """
     Ingest records from Kafka, validate schema, persist to HDFS, and commit offsets.
     Returns the count of successfully persisted records.
     """
+    if group_id is None:
+        prefix = "heart-disease-demo-group" if demo_mode else "heart-disease-hdfs-group"
+        group_id = f"{prefix}-{int(time.time())}"
+
+    if demo_mode:
+        from_beginning = False
+        timeout_ms = max(timeout_ms, 90000)
+
     print("=" * 60)
-    print("STARTING KAFKA-TO-HDFS STREAMING CONSUMER")
+    print("STARTING KAFKA-TO-HDFS STREAMING CONSUMER" if not demo_mode else "STARTING KAFKA-TO-HDFS DEMO CONSUMER")
     print("=" * 60)
     print(f"Kafka Broker:       {bootstrap_servers}")
     print(f"Topic:              {topic}")
@@ -80,6 +89,7 @@ def run_hdfs_consumer(
     print(f"Poll Timeout:       {timeout_ms / 1000:.1f}s")
     print(f"Offset Reset:       {'earliest' if from_beginning else 'latest'}")
     print(f"Commit Strategy:    Manual commit AFTER HDFS write verification")
+    print(f"Mode:               {'DEMONSTRATION (Live stream sync)' if demo_mode else 'NORMAL / BATCH'}")
     print("=" * 60)
 
     # 1. Initialize and verify HDFS Writer
@@ -109,6 +119,30 @@ def run_hdfs_consumer(
         print(f"\n[ERROR] Unexpected error initializing KafkaConsumer: {e}", file=sys.stderr)
         sys.exit(1)
 
+    start_positions: Dict[Any, int] = {}
+    if demo_mode:
+        print("[DEMO] Synchronizing consumer group with broker and seeking to end of log...")
+        assign_start = time.time()
+        while not consumer.assignment() and time.time() - assign_start < 10:
+            consumer.poll(timeout_ms=500)
+
+        consumer.seek_to_end()
+        start_positions = {tp: consumer.position(tp) for tp in consumer.assignment()}
+
+        print("=" * 65)
+        print(" DEMONSTRATION MODE: READY & LISTENING FOR LIVE STREAM")
+        print("=" * 65)
+        print(f" Topic:                {topic}")
+        for tp, pos in start_positions.items():
+            print(f" Partition {tp.partition}:          Baseline Offset {pos} (ignoring prior retained records)")
+        print(f" Target Record Count: {max_messages} records")
+        print(f" HDFS Target Path:    {hdfs_path}")
+        print(" Status:              WAITING FOR PRODUCER TO STREAM IN TERMINAL 2...")
+        print("=" * 65)
+        print("\n--> IN TERMINAL 2, RUN:")
+        print(f"    python kafka/demo_producer.py")
+        print(f"    (or: python kafka/producer.py --topic {topic})\n")
+
     consumed_records: List[Dict[str, Any]] = []
     seen_ids: Set[Any] = set()
     duplicate_ids: List[Any] = []
@@ -122,6 +156,11 @@ def run_hdfs_consumer(
 
     try:
         for message in consumer:
+            # If in demo mode and message offset is before our baseline start, ignore it
+            tp = TopicPartition(message.topic, message.partition)
+            if demo_mode and tp in start_positions and message.offset < start_positions[tp]:
+                continue
+
             payload = message.value
 
             # Validate record structure
@@ -177,7 +216,17 @@ def run_hdfs_consumer(
             )
             print(f"[OK] Successfully wrote {written_count} JSONL lines to HDFS.")
 
-            # CRITICAL COMMIT STEP: Only commit Kafka offsets once HDFS write succeeds!
+            # Strict verification of written records in HDFS before committing offset
+            if demo_mode:
+                print("Verifying HDFS persisted file integrity via WebHDFS...")
+                verified_records = hdfs_writer.read_jsonl(hdfs_path)
+                if len(verified_records) != total_validated:
+                    raise RuntimeError(
+                        f"HDFS read-back verification failed: expected {total_validated} records, got {len(verified_records)}"
+                    )
+                print(f"[OK] Verified all {len(verified_records)} records persisted and readable in HDFS.")
+
+            # CRITICAL COMMIT STEP: Only commit Kafka offsets once HDFS write succeeds and is verified!
             print("Committing Kafka consumer offsets (HDFS write confirmed)...")
             consumer.commit()
             print("[OK] Kafka offsets successfully committed.")
@@ -221,6 +270,15 @@ def run_hdfs_consumer(
             file=sys.stderr,
         )
 
+    if demo_mode and total_validated == max_messages:
+        print("\n" + "*" * 65)
+        print(" [SUCCESS] DEMO COMPLETE: 303 RECORDS CONSUMED & PERSISTED TO HDFS")
+        print("*" * 65)
+        print(" Verify via NameNode Web UI file browser:")
+        print("   http://localhost:9870/explorer.html#/heart-disease/raw")
+        print("   Click 'heart_disease_stream.jsonl' -> 'Head the file (first 32K)'")
+        print("*" * 65)
+
     return total_validated
 
 
@@ -243,7 +301,7 @@ def main():
     parser.add_argument(
         "--group-id",
         type=str,
-        default=f"heart-disease-hdfs-group-{int(time.time())}",
+        default=None,
         help="Kafka consumer group ID (default: unique group per run)",
     )
     parser.add_argument(
@@ -276,6 +334,11 @@ def main():
         help="Append to existing HDFS file instead of overwriting",
     )
     parser.add_argument(
+        "--demo",
+        action="store_true",
+        help="Run in live demonstration mode (skips historical backlog, waits for new producer stream)",
+    )
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Print verbose record-level logging",
@@ -291,6 +354,7 @@ def main():
         max_messages=args.max_messages,
         timeout_ms=args.timeout_ms,
         overwrite=not args.append,
+        demo_mode=args.demo,
         verbose=args.verbose,
     )
 
