@@ -190,13 +190,51 @@ Access the NameNode Web UI in your browser at:
 
 ---
 
-## 8. Planned Project Phases
+## 8. Phase 2: Dataset Acquisition & Exploratory Data Analysis
+
+### Dataset Details
+- **Source**: [UCI Machine Learning Repository — Heart Disease (Cleveland Database)](https://archive.ics.uci.edu/dataset/45/heart+disease)
+- **Observations**: 303 patient records
+- **Features**: 13 input clinical attributes (`age`, `sex`, `cp`, `trestbps`, `chol`, `fbs`, `restecg`, `thalach`, `exang`, `oldpeak`, `slope`, `ca`, `thal`)
+- **Target**: `target` (binary: `0` = Absence of CAD [< 50% narrowing], `1` = Presence of CAD [> 50% narrowing])
+- **Observed Class Distribution**:
+  - `0` (Absence): 164 records (54.13%)
+  - `1` (Presence): 139 records (45.87%)
+- **Missing Values**:
+  - `ca`: 4 missing values (1.32%)
+  - `thal`: 2 missing values (0.66%)
+  - Preserved as `NaN` without row deletion or premature ML imputation.
+
+Detailed clinical definitions and metadata can be found in [`docs/dataset_documentation.md`](docs/dataset_documentation.md).
+
+### How to Prepare the Dataset
+To download the official UCI raw dataset and generate the deterministic processed CSV:
+```bash
+python preprocessing/prepare_dataset.py
+```
+*(Outputs saved to `data/raw/processed.cleveland.data` and `data/processed/heart_disease.csv`).*
+
+### How to Run the Exploratory Analysis Notebook
+Launch Jupyter Notebook or JupyterLab:
+```bash
+jupyter notebook notebooks/01_data_exploration.ipynb
+```
+Or execute it in headless mode to refresh all plots:
+```bash
+jupyter nbconvert --to notebook --execute --inplace notebooks/01_data_exploration.ipynb
+```
+
+---
+
+## 9. Planned Project Phases
 
 - **Phase 1: Project Structuring & Environment Setup** *(Completed)*
   - Establish directory structure, dependencies (`requirements.txt`), Docker Compose (`docker-compose.yml`), and documentation.
-- **Phase 2: Dataset Acquisition & Exploratory Data Analysis (EDA)**
-  - Acquire the UCI Heart Disease (Cleveland) dataset.
-  - Perform statistical analysis and feature correlation visualizations in Jupyter Notebooks.
+- **Phase 2: Dataset Acquisition & Exploratory Data Analysis (EDA)** *(Completed)*
+  - Acquire official UCI Heart Disease (Cleveland) dataset.
+  - Implement automated preparation script (`preprocessing/prepare_dataset.py`).
+  - Perform statistical analysis and visualizations in `notebooks/01_data_exploration.ipynb`.
+  - Comprehensive clinical and schema documentation in `docs/dataset_documentation.md`.
 - **Phase 3: Streaming Ingestion Pipeline with Apache Kafka**
   - Implement Kafka Producer to simulate continuous clinical patient measurements.
   - Implement Kafka Consumer to read from Kafka topics.
@@ -217,35 +255,42 @@ Access the NameNode Web UI in your browser at:
 
 ---
 
-## 9. Directory Layout
+## 10. Directory Layout
 
 ```
 heart-disease-big-data/
 │
 ├── data/
-│   ├── raw/                  # Raw dataset files and ingested Kafka batches
-│   └── processed/            # Cleaned, transformed feature matrices
+│   ├── raw/
+│   │   ├── processed.cleveland.data  # Raw original dataset from UCI
+│   │   └── heart-disease.names       # Original attribute documentation
+│   └── processed/
+│       └── heart_disease.csv         # Cleaned, binarized 303x14 dataset
 │
-├── kafka/                    # Kafka producers, consumers, and topic configurations
+├── kafka/                            # Kafka producers, consumers, and topic configs
 │
-├── hdfs/                     # HDFS client utilities and ingestion scripts
+├── hdfs/                             # HDFS client utilities and ingestion scripts
 │
-├── notebooks/                # Jupyter notebooks for EDA and experimental modeling
+├── notebooks/
+│   └── 01_data_exploration.ipynb     # Pre-rendered exploratory data analysis
 │
-├── preprocessing/            # Data cleaning and feature engineering pipelines
+├── preprocessing/
+│   └── prepare_dataset.py            # Automated download & preparation script
 │
-├── models/                   # Serialized model binaries (.joblib) and training logic
+├── models/                           # Serialized model binaries (.joblib) and training logic
 │
-├── results/                  # Evaluation metrics, ROC curves, and reports
+├── results/                          # Evaluation metrics, ROC curves, and reports
 │
-├── dashboard/                # Streamlit web application code
+├── dashboard/                        # Streamlit web application code
 │
-├── docker/                   # Docker environment configuration (e.g. hadoop.env)
+├── docker/                           # Docker environment configuration (e.g. hadoop.env)
 │
-├── docs/                     # Project documentation, architecture diagrams, and reports
+├── docs/
+│   └── dataset_documentation.md      # Detailed dataset and clinical feature documentation
 │
-├── docker-compose.yml        # Multi-container Kafka (KRaft) and Hadoop HDFS cluster
-├── requirements.txt          # Python dependencies
-├── README.md                 # Project overview and roadmap
-└── .gitignore                # Version control ignore rules
+├── docker-compose.yml                # Multi-container Kafka (KRaft) and Hadoop HDFS cluster
+├── requirements.txt                  # Python dependencies
+├── README.md                         # Project overview, guides, and roadmap
+└── .gitignore                        # Version control ignore rules
 ```
+
