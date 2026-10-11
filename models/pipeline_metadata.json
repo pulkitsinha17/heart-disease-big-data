@@ -1,0 +1,194 @@
+{
+  "dataset_source": "HDFS /heart-disease/raw/heart_disease_stream.jsonl",
+  "total_records": 303,
+  "train_records": 242,
+  "test_records": 61,
+  "random_state": 42,
+  "clinical_features": [
+    "age",
+    "trestbps",
+    "chol",
+    "thalach",
+    "oldpeak",
+    "cp",
+    "restecg",
+    "slope",
+    "thal",
+    "ca",
+    "sex",
+    "fbs",
+    "exang"
+  ],
+  "numeric_features": [
+    "age",
+    "trestbps",
+    "chol",
+    "thalach",
+    "oldpeak"
+  ],
+  "categorical_features": [
+    "cp",
+    "restecg",
+    "slope",
+    "thal",
+    "ca"
+  ],
+  "binary_features": [
+    "sex",
+    "fbs",
+    "exang"
+  ],
+  "transformed_features_count": 25,
+  "transformed_feature_names": [
+    "num__age",
+    "num__trestbps",
+    "num__chol",
+    "num__thalach",
+    "num__oldpeak",
+    "cat__cp_1.0",
+    "cat__cp_2.0",
+    "cat__cp_3.0",
+    "cat__cp_4.0",
+    "cat__restecg_0.0",
+    "cat__restecg_1.0",
+    "cat__restecg_2.0",
+    "cat__slope_1.0",
+    "cat__slope_2.0",
+    "cat__slope_3.0",
+    "cat__thal_3.0",
+    "cat__thal_6.0",
+    "cat__thal_7.0",
+    "cat__ca_0.0",
+    "cat__ca_1.0",
+    "cat__ca_2.0",
+    "cat__ca_3.0",
+    "bin__sex",
+    "bin__fbs",
+    "bin__exang"
+  ],
+  "models": {
+    "logistic_regression": {
+      "file": "logistic_regression.joblib",
+      "hyperparameters": {
+        "C": 0.5,
+        "class_weight": null,
+        "dual": false,
+        "fit_intercept": true,
+        "intercept_scaling": 1,
+        "l1_ratio": 0.0,
+        "max_iter": 1000,
+        "n_jobs": null,
+        "penalty": "deprecated",
+        "random_state": 42,
+        "solver": "lbfgs",
+        "tol": 0.0001,
+        "verbose": 0,
+        "warm_start": false
+      },
+      "cv_repeated_5fold_roc_auc_mean": 0.8956,
+      "cv_repeated_5fold_roc_auc_std": 0.0421,
+      "cv_n_splits": 5,
+      "cv_n_repeats": 5,
+      "cv_total_folds": 25,
+      "test_metrics": {
+        "model_name": "Logistic Regression",
+        "roc_auc": 0.9697,
+        "accuracy": 0.9016,
+        "precision": 0.8667,
+        "recall_sensitivity": 0.9286,
+        "specificity": 0.8788,
+        "f1_score": 0.8966,
+        "confusion_matrix": {
+          "true_negatives": 29,
+          "false_positives": 4,
+          "false_negatives": 2,
+          "true_positives": 26
+        },
+        "classification_report": {
+          "0": {
+            "precision": 0.9354838709677419,
+            "recall": 0.8787878787878788,
+            "f1-score": 0.90625,
+            "support": 33.0
+          },
+          "1": {
+            "precision": 0.8666666666666667,
+            "recall": 0.9285714285714286,
+            "f1-score": 0.896551724137931,
+            "support": 28.0
+          },
+          "accuracy": 0.9016393442622951,
+          "macro avg": {
+            "precision": 0.9010752688172043,
+            "recall": 0.9036796536796536,
+            "f1-score": 0.9014008620689655,
+            "support": 61.0
+          },
+          "weighted avg": {
+            "precision": 0.9038956460426582,
+            "recall": 0.9016393442622951,
+            "f1-score": 0.9017983323911815,
+            "support": 61.0
+          }
+        }
+      }
+    },
+    "random_forest": {
+      "file": "random_forest.joblib",
+      "hyperparameters": {
+        "max_depth": 4,
+        "min_samples_leaf": 2,
+        "min_samples_split": 5,
+        "n_estimators": 100,
+        "random_state": 42
+      },
+      "cv_repeated_5fold_roc_auc_mean": 0.8936,
+      "cv_repeated_5fold_roc_auc_std": 0.0404,
+      "cv_n_splits": 5,
+      "cv_n_repeats": 5,
+      "cv_total_folds": 25,
+      "test_metrics": {
+        "model_name": "Random Forest",
+        "roc_auc": 0.947,
+        "accuracy": 0.8525,
+        "precision": 0.8276,
+        "recall_sensitivity": 0.8571,
+        "specificity": 0.8485,
+        "f1_score": 0.8421,
+        "confusion_matrix": {
+          "true_negatives": 28,
+          "false_positives": 5,
+          "false_negatives": 4,
+          "true_positives": 24
+        },
+        "classification_report": {
+          "0": {
+            "precision": 0.875,
+            "recall": 0.8484848484848485,
+            "f1-score": 0.8615384615384616,
+            "support": 33.0
+          },
+          "1": {
+            "precision": 0.8275862068965517,
+            "recall": 0.8571428571428571,
+            "f1-score": 0.8421052631578947,
+            "support": 28.0
+          },
+          "accuracy": 0.8524590163934426,
+          "macro avg": {
+            "precision": 0.8512931034482758,
+            "recall": 0.8528138528138528,
+            "f1-score": 0.8518218623481781,
+            "support": 61.0
+          },
+          "weighted avg": {
+            "precision": 0.8532362916902204,
+            "recall": 0.8524590163934426,
+            "f1-score": 0.8526183049047588,
+            "support": 61.0
+          }
+        }
+      }
+    }
+  }
+}

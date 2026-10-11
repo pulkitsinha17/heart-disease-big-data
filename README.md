@@ -335,21 +335,44 @@ docker exec namenode hdfs dfs -tail /heart-disease/raw/heart_disease_stream.json
   - Implement WebHDFS client module (`hdfs/hdfs_writer.py`) with Docker hostname redirection rewrite.
   - Implement Kafka-to-HDFS consumer (`kafka/hdfs_consumer.py`) with post-write manual offset commit.
   - Automated end-to-end integration test (`hdfs/test_kafka_hdfs.py`) validating exact CSV ground truth in HDFS.
-- **Phase 5: Data Cleaning & Feature Engineering**
-  - Implement preprocessing scripts for missing value handling, feature scaling, and categorical encoding.
-- **Phase 6: Machine Learning Model Development & Validation**
-  - Train classification models using scikit-learn.
-  - Evaluate performance against the target threshold: **ROC-AUC > 0.85** on a held-out test set.
-- **Phase 7: Model Serialization & Export**
-  - Save trained pipeline and model artifacts using `joblib`.
-- **Phase 8: Clinical Dashboard Development**
-  - Build an interactive Streamlit application for primary-care screening predictions.
-- **Phase 9: Containerization & Final Documentation**
+- **Phase 5: Machine Learning Workflow & Comparative Evaluation** *(Completed)*
+  - Ingest 303 patient records directly from Hadoop HDFS (`/heart-disease/raw/heart_disease_stream.jsonl`) via WebHDFS.
+  - Implement leakage-safe preprocessing pipeline (`preprocessing/pipeline.py`) using scikit-learn `ColumnTransformer` and `Pipeline`.
+  - Train and compare **Logistic Regression** and **Random Forest Classifier** with Repeated Stratified 5-Fold Cross-Validation on training data (25 folds total).
+  - Evaluate on held-out test set ($N=61$):
+    - **Logistic Regression**: Repeated CV ROC-AUC = **0.8956 $\pm$ 0.0421**, Test ROC-AUC = **0.9697**, Test Accuracy = **90.16%**, Recall = **92.86%**, F1 = **0.8966**.
+    - **Random Forest**: Repeated CV ROC-AUC = **0.8936 $\pm$ 0.0404**, Test ROC-AUC = **0.9470**, Test Accuracy = **85.25%**, Recall = **85.71%**, F1 = **0.8421**.
+  - **Project Target (ROC-AUC > 0.85): EXCEEDED BY BOTH MODELS.**
+  - Save serialized models to `models/*.joblib` and metrics/plots to `results/`.
+  - Comprehensive documentation in `docs/model_documentation.md` and pre-executed notebook in `notebooks/02_model_training.ipynb`.
+- **Phase 6: Clinical Dashboard Development**
+  - Build an interactive Streamlit application for primary-care screening predictions using the persisted models.
+- **Phase 7: Containerization & Final Project Presentation**
   - Final integration testing, reproducible deployment report, and presentation materials.
 
 ---
 
-## 12. Directory Layout
+## 12. Running Machine Learning Training (Phase 5)
+
+Ensure Hadoop containers are running and the HDFS streaming file exists:
+
+```powershell
+# 1. Activate Python virtual environment
+.\.venv\Scripts\Activate.ps1
+
+# 2. Run the end-to-end model training script (reads directly from HDFS)
+python models/train.py
+
+# 3. Inspect generated metrics and visualizations in results/
+Get-ChildItem results/
+
+# 4. Launch Jupyter Notebook to inspect the interactive workflow
+jupyter notebook notebooks/02_model_training.ipynb
+```
+
+---
+
+## 13. Directory Layout
 
 ```
 heart-disease-big-data/
@@ -374,21 +397,35 @@ heart-disease-big-data/
 │   └── test_kafka_hdfs.py            # End-to-end Kafka-to-HDFS integration test
 │
 ├── notebooks/
-│   └── 01_data_exploration.ipynb     # Pre-rendered exploratory data analysis
+│   ├── 01_data_exploration.ipynb     # Pre-rendered exploratory data analysis
+│   └── 02_model_training.ipynb        # Phase 5: HDFS ingestion & model comparison
 │
 ├── preprocessing/
-│   └── prepare_dataset.py            # Automated download & preparation script
+│   ├── prepare_dataset.py            # Automated download & preparation script
+│   └── pipeline.py                   # Phase 5: HDFS loader & ColumnTransformer
 │
-├── models/                           # Serialized model binaries (.joblib) and training logic
+├── models/
+│   ├── logistic_regression.joblib    # Serialized Logistic Regression pipeline
+│   ├── random_forest.joblib          # Serialized Random Forest pipeline
+│   ├── pipeline_metadata.json        # Hyperparameters and CV score metadata
+│   ├── evaluate.py                   # Metric computation & plotting routines
+│   └── train.py                      # Phase 5 CLI training & evaluation runner
 │
-├── results/                          # Evaluation metrics, ROC curves, and reports
+├── results/
+│   ├── model_metrics.json            # Machine-readable evaluation metrics
+│   ├── metrics_comparison.csv        # Tabular model comparison
+│   ├── test_predictions.csv          # Record-level test predictions
+│   ├── roc_curve_comparison.png      # ROC curve comparison plot (300 DPI)
+│   ├── confusion_matrices.png        # Side-by-side confusion matrix heatmaps (300 DPI)
+│   └── feature_importance.png        # Top feature importance/coefficients (300 DPI)
 │
-├── dashboard/                        # Streamlit web application code
+├── dashboard/                        # Streamlit web application code (Phase 6)
 │
 ├── docker/                           # Docker environment configuration (e.g. hadoop.env)
 │
 ├── docs/
-│   └── dataset_documentation.md      # Detailed dataset and clinical feature documentation
+│   ├── dataset_documentation.md      # Detailed dataset and clinical feature documentation
+│   └── model_documentation.md        # Phase 5 modeling methodology and results
 │
 ├── docker-compose.yml                # Multi-container Kafka (KRaft) and Hadoop HDFS cluster
 ├── requirements.txt                  # Python dependencies

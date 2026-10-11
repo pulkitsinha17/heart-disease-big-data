@@ -1,0 +1,3 @@
+Model,CV Repeated ROC-AUC (Mean),CV Repeated ROC-AUC (Std),Test ROC-AUC,Test Accuracy,Test Precision,Test Recall,Test Specificity,Test F1,Target > 0.85 Met
+Logistic Regression,0.8956,0.0421,0.9697,0.9016,0.8667,0.9286,0.8788,0.8966,Yes
+Random Forest,0.8936,0.0404,0.947,0.8525,0.8276,0.8571,0.8485,0.8421,Yes
