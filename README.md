@@ -270,7 +270,54 @@ python kafka/test_streaming.py
 
 ---
 
-## 10. Planned Project Phases
+## 10. Phase 4: Distributed Storage on Hadoop HDFS
+
+### Architecture & WebHDFS Client
+- **HDFS Target Path**: `/heart-disease/raw/heart_disease_stream.jsonl`
+- **Format**: JSON Lines (`.jsonl`), one strict JSON record per line.
+- **WebHDFS Redirection Handling**: NameNode returns an HTTP 307 redirect to `http://datanode:9864/...`. The [`hdfs/hdfs_writer.py`](hdfs/hdfs_writer.py) module automatically rewrites internal Docker hostnames to host-accessible `localhost:9864`, allowing Python on Windows to stream data into HDFS without modifying Windows DNS or `/etc/hosts`.
+- **Offset Commit Strategy**:
+  - `enable_auto_commit=False` (Manual commit).
+  - The consumer buffers and persists records to HDFS.
+  - Offsets are committed to Kafka **only after** DataNode returns an HTTP 201 Created acknowledgment. This guarantees zero data loss and prevents premature offset advancement.
+
+### How to Run Kafka-to-HDFS Ingestion
+
+#### Option A: Run in Separate PowerShell Terminals
+
+**Terminal 1 (Start HDFS Consumer):**
+```powershell
+python kafka/hdfs_consumer.py --max-messages 303
+```
+*(Connects to HDFS, validates incoming Kafka records, writes to `/heart-disease/raw/heart_disease_stream.jsonl`, and commits offsets upon verified persistence).*
+
+**Terminal 2 (Start Producer):**
+```powershell
+python kafka/producer.py
+```
+*(Streams all 303 records from `data/processed/heart_disease.csv` into Kafka).*
+
+#### Option B: Run Automated End-to-End Integration Test
+```powershell
+python hdfs/test_kafka_hdfs.py
+```
+*(Automates Kafka connectivity check, HDFS write check, background consumer startup, producer streaming, HDFS read-back, and ground-truth validation against `heart_disease.csv`).*
+
+#### Inspecting Stored Records in HDFS
+```powershell
+# List files in HDFS project directory
+docker exec namenode hdfs dfs -ls -h /heart-disease/raw
+
+# View first few records
+docker exec namenode hdfs dfs -head /heart-disease/raw/heart_disease_stream.jsonl
+
+# View last few records
+docker exec namenode hdfs dfs -tail /heart-disease/raw/heart_disease_stream.jsonl
+```
+
+---
+
+## 11. Planned Project Phases
 
 - **Phase 1: Project Structuring & Environment Setup** *(Completed)*
   - Establish directory structure, dependencies (`requirements.txt`), Docker Compose (`docker-compose.yml`), and documentation.
@@ -284,9 +331,10 @@ python kafka/test_streaming.py
   - Implement Kafka Consumer (`kafka/consumer.py`) with schema and uniqueness validation.
   - Implement shared configuration and validation schema (`kafka/config.py`).
   - Automated end-to-end streaming test (`kafka/test_streaming.py`).
-- **Phase 4: Distributed Storage on Hadoop HDFS**
-  - Configure Hadoop HDFS storage.
-  - Ingest raw stream data into HDFS directories.
+- **Phase 4: Distributed Storage on Hadoop HDFS** *(Completed)*
+  - Implement WebHDFS client module (`hdfs/hdfs_writer.py`) with Docker hostname redirection rewrite.
+  - Implement Kafka-to-HDFS consumer (`kafka/hdfs_consumer.py`) with post-write manual offset commit.
+  - Automated end-to-end integration test (`hdfs/test_kafka_hdfs.py`) validating exact CSV ground truth in HDFS.
 - **Phase 5: Data Cleaning & Feature Engineering**
   - Implement preprocessing scripts for missing value handling, feature scaling, and categorical encoding.
 - **Phase 6: Machine Learning Model Development & Validation**
@@ -301,7 +349,7 @@ python kafka/test_streaming.py
 
 ---
 
-## 11. Directory Layout
+## 12. Directory Layout
 
 ```
 heart-disease-big-data/
@@ -317,9 +365,13 @@ heart-disease-big-data/
 │   ├── config.py                     # Kafka constants and schema validation
 │   ├── producer.py                   # Patient record streaming producer
 │   ├── consumer.py                   # Validating streaming consumer
-│   └── test_streaming.py             # Automated end-to-end test runner
+│   ├── hdfs_consumer.py              # Ingests from Kafka and persists to HDFS
+│   └── test_streaming.py             # Automated end-to-end Kafka test runner
 │
-├── hdfs/                             # HDFS client utilities and ingestion scripts
+├── hdfs/
+│   ├── __init__.py                   # HDFS package initialization
+│   ├── hdfs_writer.py                # WebHDFS client with redirect resolution
+│   └── test_kafka_hdfs.py            # End-to-end Kafka-to-HDFS integration test
 │
 ├── notebooks/
 │   └── 01_data_exploration.ipynb     # Pre-rendered exploratory data analysis
@@ -343,5 +395,6 @@ heart-disease-big-data/
 ├── README.md                         # Project overview, guides, and roadmap
 └── .gitignore                        # Version control ignore rules
 ```
+
 
 
